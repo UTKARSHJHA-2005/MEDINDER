@@ -6,12 +6,11 @@ import { Stack } from 'expo-router';
 
 export default function TabOneScreen() {
   const route = useRouter();
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <Header />
-      <Med />
+      <Med/>
     </>
   );
 }
@@ -22,7 +21,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 40, // so button isn't cut off
+    paddingBottom: 40,
   },
   img: {
     width: 200,

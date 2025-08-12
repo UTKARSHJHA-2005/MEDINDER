@@ -7,20 +7,34 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
-import { auth } from '../config/db';
+import { Auth } from '../config/db';
+import { useAuthRequest, makeRedirectUri } from 'expo-auth-session';
+import { getApp } from 'firebase/app';
 import { setstorage } from '../service/Storage';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, getAuth, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { Entypo } from '@expo/vector-icons';
-import * as LocalAuthentication from 'expo-local-authentication';
+import auth from '@react-native-firebase/auth';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+import * as LocalAuthentication from 'expo-local-authentication'
+// import auth from '@react-native-firebase/auth';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
+import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 
+GoogleSignin.configure({
+  webClientId: "70506501293-b2pi75ees1234u0bb6ls9iac3g7iuoej.apps.googleusercontent.com",
+})
 const Login = () => {
+  // const app = getApp();
+  // const auth = getAuth(app);
   const router = useRouter();
   const [isBiometric, setIsBiometric] = useState(false);
   const [username, setUsername] = useState('');
+  const route = useRouter()
+  const [userinfo, setuserinfo] = useState<any>(null);
   const [password, setPassword] = useState('');
-  const Google = new GoogleAuthProvider();
+  const CLIENT_ID = "521789138294-lg66qlkesrnevf1crb3n8a9sbfaihq1v.apps.googleusercontent.com";
 
   const handleBiometric = async () => {
     const isAvailable = await LocalAuthentication.hasHardwareAsync();
@@ -35,6 +49,9 @@ const Login = () => {
       disableDeviceFallback: true,
     });
     if (biometricAuth.success) {
+      const userCredential = await signInWithEmailAndPassword(Auth, username, password);
+      await setstorage('userDetail', userCredential.user);
+      console.log("Logged in successfully:", userCredential.user);
       router.replace('/(tabs)');
     } else {
       Alert.alert('Biometric login failed');
@@ -43,7 +60,7 @@ const Login = () => {
 
   const handleLogin = async () => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, username, password);
+      const userCredential = await signInWithEmailAndPassword(Auth, username, password);
       router.replace('/(tabs)');
       await setstorage('userDetail', userCredential.user);
       console.log("Logged in successfully:", userCredential.user);
@@ -52,32 +69,13 @@ const Login = () => {
     }
   }
 
-  const googlesignin = async () => {
-    try {
-      const result = await signInWithPopup(auth, Google);
-      console.log("Google sign-in successful:", result.user);
-    } catch (error) {
-      console.error("Google sign-in error:", error);
-    }
-  };
-
-  useEffect(() => {
-    (async () => {
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      setIsBiometric(compatible);
-    })();
-  }, []);
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-      <TextInput placeholder="Username" style={styles.input} value={username} onChangeText={setUsername} autoCapitalize="none"/>
-      <TextInput placeholder="Password" style={styles.input} value={password} onChangeText={setPassword} secureTextEntry/>
+      <TextInput placeholder="Username" style={styles.input} value={username} onChangeText={setUsername} autoCapitalize="none" />
+      <TextInput placeholder="Password" style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
       <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
         <Text style={styles.loginText}>Login</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.googleBtn} onPress={googlesignin}>
-        <Text style={styles.googleText}>Login with Google</Text>
       </TouchableOpacity>
       <View style={styles.linkRow}>
         <TouchableOpacity onPress={() => router.push('/signup/signup')}>
@@ -116,6 +114,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderColor: '#ccc',
     borderWidth: 1,
+    color: 'black',
     borderRadius: 10,
     paddingHorizontal: 10,
     marginBottom: 15,

@@ -1,9 +1,11 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, Modal, View, TouchableOpacity } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { getStorage } from '../service/Storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Options from '../components/Options';
 
 const Header = () => {
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -12,20 +14,28 @@ const Header = () => {
 
   const getUserDetail = async () => {
     const userInfo = await getStorage('userDetail');
-    console.log('User Info:', userInfo);
     setUser(userInfo);
+    console.log("User det:",userInfo)
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.headerText}>👋 Welcome</Text>
-        <TouchableOpacity onPress={() => console.log('Settings pressed')}>
+        <TouchableOpacity onPress={() => setDrawerVisible(true)}>
           <Ionicons name="settings-outline" size={26} color="#f52828ff" />
         </TouchableOpacity>
+        <Modal
+          visible={drawerVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setDrawerVisible(false)}
+        >
+          <Options onClose={() => setDrawerVisible(false)} />
+        </Modal>
       </View>
       {user ? (
-        <Text style={styles.userText}>Hi, {user.displayName || 'User'}!</Text>
+        <Text style={styles.userText}>Hi, {user.displayName || user.name || user.givenName || 'User'}!</Text>
       ) : (
         <Text style={styles.loadingText}>Loading user...</Text>
       )}

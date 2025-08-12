@@ -1,71 +1,86 @@
-// components/NotificationManager.tsx
-import { useEffect } from 'react';
-import * as Notifications from 'expo-notifications';
-import { getStorage } from '../service/Storage';
-function getDatesBetween(start: string, end: string): Date[] {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const dates: Date[] = [];
+import * as Notifications from "expo-notifications";
+import { useEffect } from "react";
+import { getDocs, collection } from "firebase/firestore";
+import { store } from "../config/db";
 
-    while (startDate <= endDate) {
-        dates.push(new Date(startDate));
-        startDate.setDate(startDate.getDate() + 1);
+// Show notifications in foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+async function requestNotificationPermission() {
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
+}
+
+async function fetchMedicines() {
+  const snapshot = await getDocs(collection(store, "medicine"));
+  const meds: any[] = [];
+  snapshot.forEach((doc) => {
+    meds.push({ id: doc.id, ...doc.data() });
+  });
+  return meds;
+}
+
+async function scheduleMedicineReminders() {
+  const hasPermission = await requestNotificationPermission();
+  if (!hasPermission) {
+    alert("Permission for notifications not granted!");
+    return;
+  }
+
+  const medicines = await fetchMedicines();
+
+  for (const med of medicines) {
+    if (!med.reminder || !med.endDate) continue;
+
+    const [hour, minute] = med.reminder.split(":").map(Number);
+
+    // Handle Firestore Timestamp or string
+    let endDate = med.endDate.toDate ? med.endDate.toDate() : new Date(med.endDate);
+
+    // Start from today
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    while (currentDate <= endDate) {
+      const triggerDate = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate(),
+        hour,
+        minute,
+        0
+      );
+
+      if (triggerDate > new Date()) {
+        console.log(`Scheduling ${med.name} for ${triggerDate}`);
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "💊 Medicine Reminder",
+            body: `Time to take your ${med.name}`,
+            sound: true,
+          },
+          trigger: triggerDate as unknown as Notifications.NotificationTriggerInput, // works in SDK 48+ standalone builds
+        });
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
     }
-
-    return dates;
+  }
 }
 
 export default function NotificationManager() {
-    useEffect(() => {
-        const setup = async () => {
-            const user = await getStorage('userDetail');
-            const medicine: any = [];
-            if (user) {
-                const { collection, getDocs, query, where } = await import('firebase/firestore');
-                const { store } = await import('../config/db');
-                const q = query(collection(store, 'medicine'), where('userId', '==', user.uid));
-                const querySnapshot = await getDocs(q);
-                querySnapshot.forEach((doc) => {
-                    medicine.push({
-                        id: doc.id,
-                        ...(doc.data() as Omit<any, 'id'>),
-                    });
-                });
-            }
-            for (const med of medicine) {
-                const reminderTime = new Date(med.reminder);
-                const dates = getDatesBetween(med.startDate, med.endDate);
-                const hours = reminderTime.getHours();
-                const minutes = reminderTime.getMinutes();
-                for (let date of dates) {
-                    const notifDate = new Date(date);
-                    notifDate.setHours(hours);
-                    notifDate.setMinutes(minutes);
-                    notifDate.setSeconds(0);
+  useEffect(() => {
+    scheduleMedicineReminders();
+  }, []);
 
-                    if (notifDate > new Date()) {
-                        await Notifications.scheduleNotificationAsync({
-                            content: {
-                                title: `Take ${med.medName}`,
-                                body: `Dose: ${med.dose || ''}`,
-                            },
-                            trigger: {
-                                type: 'calendar',
-                                year: notifDate.getFullYear(),
-                                month: notifDate.getMonth() + 1,
-                                day: notifDate.getDate(),
-                                hour: notifDate.getHours(),
-                                minute: notifDate.getMinutes(),
-                                repeats: false,
-                            } as Notifications.NotificationTriggerInput,
-                        });
-                    }
-                }
-            }
-        };
-
-        setup();
-    }, []);
-
-    return null;
+  return null;
 }

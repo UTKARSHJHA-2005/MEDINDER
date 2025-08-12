@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Switch, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Switch, TouchableOpacity, Alert, Image, Platform, PermissionsAndroid } from 'react-native';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from 'firebase/auth';
-import { auth } from "../config/db";
-import { doc, setDoc } from "firebase/firestore";
+import { Auth } from "../config/db";
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { setstorage } from '../service/Storage';
 
 export default function SignUpScreen() {
@@ -14,6 +14,26 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isDoctor, setIsDoctor] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null | undefined>(null);
+
+  const pickImage = async () => {
+     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission denied!');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, 
+      aspect: [1, 1], 
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -26,8 +46,8 @@ export default function SignUpScreen() {
     }
     Alert.alert('Account created successfully!');
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
+      const userCredential = await createUserWithEmailAndPassword(Auth, email, password);
+      await updateProfile(userCredential.user, { displayName: name, photoURL: imageUri });
       setstorage('userDetail', userCredential.user);
       console.log("User signed up successfully:", userCredential.user);
       alert("Sign-up successful!");
@@ -37,17 +57,15 @@ export default function SignUpScreen() {
     router.push('/login/login');
   };
 
-  const googlesignin = async () => {
-    try {
-      const result = await signInWithPopup(auth, Google);
-      console.log("Google sign-in successful:", result.user);
-    } catch (error) {
-      console.error("Google sign-in error:", error);
-    }
-  };
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create Your Account</Text>
+      <View style={{ alignItems: 'center', marginBottom: 20 }}>
+        <Button title="Pick an Image" onPress={pickImage} />
+        {imageUri && (
+          <Image source={{ uri: imageUri }} style={styles.image} />
+        )}
+      </View>
       <TextInput
         placeholder="Full Name"
         value={name}
@@ -70,14 +88,7 @@ export default function SignUpScreen() {
         secureTextEntry
         style={styles.input}
       />
-      <View style={styles.switchContainer}>
-        <Text>Are you a doctor?</Text>
-        <Switch value={isDoctor} onValueChange={setIsDoctor} />
-      </View>
       <Button title="Create Account" onPress={handleSignUp} />
-      <TouchableOpacity style={styles.googleBtn} onPress={googlesignin}>
-        <Text style={styles.googleText}>Signup with Google</Text>
-      </TouchableOpacity>
       <TouchableOpacity onPress={() => router.push('/login/login')}>
         <Text style={styles.loginLink}>
           Already have an account
@@ -105,6 +116,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
+    color:'black',
     paddingHorizontal: 12,
     marginBottom: 16,
   },
@@ -114,6 +126,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     justifyContent: 'space-between',
   },
+  image: { width: 200, height: 200, borderRadius: 100, marginTop: 20, marginBottom: 30 },
   loginLink: {
     marginTop: 16,
     color: '#007bff',

@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import { getStorage } from '../service/Storage';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, Timestamp, where } from 'firebase/firestore';
 import { store } from '../config/db';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
@@ -25,6 +26,7 @@ type Medicine = {
   startDate: string;
   endDate: string;
   reminder: string;
+  selectedTime: Timestamp,
   user: string;
   userId: string;
 };
@@ -37,13 +39,15 @@ const Med = () => {
   const slideAnim = useRef(new Animated.Value(50)).current;
   const route = useRouter();
 
-
   const medlist = async () => {
     const user = await getStorage('userDetail');
+    console.log("USe me", user.email)
     try {
       setLoading(true);
-      const q = query(collection(store, 'medicine'), where('userId', '==', user.uid));
+      const q = query(collection(store, "medicine"), where('userId', '==', user.uid));
+      console.log("query:", q)
       const querySnapshot = await getDocs(q);
+      console.log("Snap:", querySnapshot)
       const meds: Medicine[] = [];
       querySnapshot.forEach((doc) => {
         meds.push({
@@ -52,7 +56,6 @@ const Med = () => {
         });
       });
       setMedicine(meds);
-
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -65,7 +68,6 @@ const Med = () => {
           useNativeDriver: true,
         }),
       ]).start();
-
     } catch (err) {
       console.log(err);
     } finally {
@@ -83,11 +85,11 @@ const Med = () => {
     medlist();
   }, []);
 
-  const getMedicineTypeIcon = (type: string) => {
+  const getMedicineTypeIcon = (type: string | undefined | null) => {
     const icons = {
-      tablet: '💊',
-      pill: '💊',
-      capsule: '💊',
+      Tablet: '💊',
+      Pill: '💊',
+      Capsule: '💊',
       syrup: '🧴',
       liquid: '🧴',
       injection: '💉',
@@ -95,9 +97,48 @@ const Med = () => {
       ointment: '🧴',
       drops: '💧',
       inhaler: '🫁',
-      spray: '💨'
+      spray: '💨',
     };
+
+    if (!type || typeof type !== 'string') return '💊';
+
     return icons[type.toLowerCase() as keyof typeof icons] || '💊';
+  };
+
+  const toDateFromObject = (ts: any): Date => {
+    if (!ts?.seconds) return new Date(); // or return null/undefined
+    return new Timestamp(ts.seconds, ts.nanoseconds).toDate();
+  };
+
+  const toDateFromTimestamp = (ts: any) => {
+    if (!ts?.seconds) return new Date();
+    return new Date(ts.seconds * 1000);
+  };
+
+  const scheduleMedicineNotification = async (medicine: Medicine) => {
+    const notificationDate = toDateFromTimestamp(medicine.selectedTime);
+
+    if (notificationDate > new Date()) {
+      // Correctly define the trigger object directly inside the function call
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `Time to take ${medicine.medName}`,
+          body: `Don't forget your ${medicine.dose} dose.`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: {
+          type: 'calendar', // This literal string 'calendar' is what the compiler needs
+          year: notificationDate.getFullYear(),
+          month: notificationDate.getMonth() + 1, // 1-indexed
+          day: notificationDate.getDate(),
+          hour: notificationDate.getHours(),
+          minute: notificationDate.getMinutes(),
+          second: notificationDate.getSeconds(),
+          repeats: false,
+        } as Notifications.CalendarTriggerInput,
+      });
+    }
   };
 
   const getReminderConfig = (reminder: string) => {
@@ -126,6 +167,7 @@ const Med = () => {
   const renderMedicineCard = ({ item, index }: { item: Medicine; index: number }) => {
     const reminderConfig = getReminderConfig(item.reminder);
     const daysInfo = getDaysRemaining(item.endDate);
+    console.log(item)
 
     return (
       <Animated.View
@@ -166,7 +208,13 @@ const Med = () => {
 
             <View style={styles.badgesContainer}>
               <View style={[styles.reminderBadge, { backgroundColor: reminderConfig.color }]}>
-                <Text style={styles.reminderText}>{item.reminder}</Text>
+                <Text style={styles.reminderText}>
+                  {toDateFromObject(item.selectedTime).toLocaleTimeString('en-IN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                  })}
+                </Text>
               </View>
               <View style={[styles.daysBadge, { backgroundColor: daysInfo.bgColor }]}>
                 <Text style={[styles.daysText, { color: daysInfo.color }]}>
@@ -175,7 +223,6 @@ const Med = () => {
               </View>
             </View>
           </View>
-
           {/* Progress Bar */}
           <View style={styles.progressContainer}>
             <View style={styles.progressTrack}>
@@ -229,25 +276,6 @@ const Med = () => {
     );
   };
 
-  const renderEmptyState = () => (
-    <Animated.View
-      style={[styles.emptyContainer, { opacity: fadeAnim }]}
-    >
-      <View style={styles.emptyIconContainer}>
-        <Text style={styles.emptyIcon}>💊</Text>
-        <View style={styles.emptyIconBg} />
-      </View>
-      <Text style={styles.emptyTitle}>No Medications Yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Start your health journey by adding{'\n'}
-        your first medication schedule
-      </Text>
-      <TouchableOpacity style={styles.addButton}>
-        <Text style={styles.addButtonText}>+ Add Medication</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -267,7 +295,31 @@ const Med = () => {
         data={medicine}
         keyExtractor={(item) => item.id}
         renderItem={renderMedicineCard}
-        ListEmptyComponent={renderEmptyState}
+        ListEmptyComponent={
+          <Animated.View style={[styles.emptyContainer, { opacity: fadeAnim }]}>
+            <View style={styles.emptyIconContainer}>
+              <Text style={styles.emptyIcon}>💊</Text>
+              <View style={styles.emptyIconBg} />
+            </View>
+            <Text style={styles.emptyTitle}>No Medications Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Start your health journey by adding{'\n'}your first medication schedule
+            </Text>
+            <TouchableOpacity style={styles.addButton} onPress={() => route.push('/components/AddMed')}>
+              <Text style={styles.addButtonText}>+ Add Medication</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        }
+        ListFooterComponent={
+          medicine.length > 0 ? (
+            <>
+              <Image source={require('../../assets/images/1393514.png')} style={styles.img} />
+              <TouchableOpacity style={styles.btn} onPress={() => route.push('/components/AddMed')}>
+                <Text style={styles.btnText}>Add New Medication</Text>
+              </TouchableOpacity>
+            </>
+          ) : null
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
         refreshControl={
@@ -279,12 +331,9 @@ const Med = () => {
           />
         }
       />
-      <Image source={require('../../assets/images/1393514.png')} style={styles.img} />
-      <TouchableOpacity style={styles.btn} onPress={() => route.push('/components/AddMed')}>
-        <Text style={styles.btnText}>Add New Medication</Text>
-      </TouchableOpacity>
     </View>
   );
+
 };
 
 export default Med;
@@ -302,7 +351,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     alignSelf: 'center',
-    marginTop: 100,
+    marginTop: 20,
   },
   btn: {
     backgroundColor: '#007AFF',

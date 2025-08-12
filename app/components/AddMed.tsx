@@ -33,17 +33,6 @@ export default function AddMed() {
   const minutes = reminder.getMinutes().toString().padStart(2, '0');
   const formattedTime = `${hours}:${minutes}`;
   const handleSave = async () => {
-    console.log({
-      medName,
-      type,
-      dose,
-      selectedTime: selectedTime.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      startDate,
-      endDate
-    });
     const docid = Date.now().toString();
     const user = await getStorage('userDetail')
     if (!(medName && type && dose && selectedTime && startDate)) {
@@ -56,7 +45,7 @@ export default function AddMed() {
         medName,
         type,
         dose,
-        selectedTime,
+        selectedTime:selectedTime.getTime(),
         startDate:startDate.toLocaleDateString('en-CA'),
         endDate:endDate.toLocaleDateString('en-CA'),
         userId: user.uid,
