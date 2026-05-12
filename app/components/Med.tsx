@@ -6,17 +6,24 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
-  Animated, Image,
-  RefreshControl
-} from 'react-native';
-import React, { useEffect, useState, useRef } from 'react';
-import { getStorage } from '../service/Storage';
-import { collection, getDocs, query, Timestamp, where } from 'firebase/firestore';
-import { store } from '../config/db';
-import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
+  Animated,
+  Image,
+  RefreshControl,
+} from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { getStorage } from "../service/Storage";
+import {
+  collection,
+  getDocs,
+  query,
+  Timestamp,
+  where,
+} from "firebase/firestore";
+import { store } from "../config/db";
+import * as Notifications from "expo-notifications";
+import { useRouter } from "expo-router";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 type Medicine = {
   id: string;
@@ -26,7 +33,7 @@ type Medicine = {
   startDate: string;
   endDate: string;
   reminder: string;
-  selectedTime: Timestamp,
+  selectedTime: Timestamp;
   user: string;
   userId: string;
 };
@@ -40,21 +47,39 @@ const Med = () => {
   const route = useRouter();
 
   const medlist = async () => {
-    const user = await getStorage('userDetail');
-    console.log("USe me", user.email)
+    const user = await getStorage("userDetail");
+    console.log("USe me", user.email);
     try {
       setLoading(true);
-      const q = query(collection(store, "medicine"), where('userId', '==', user.uid));
-      console.log("query:", q)
+      const q = query(
+        collection(store, "medicine"),
+        where("userId", "==", user.uid),
+      );
+      console.log("query:", q);
       const querySnapshot = await getDocs(q);
-      console.log("Snap:", querySnapshot)
+      console.log("Snap:", querySnapshot);
       const meds: Medicine[] = [];
+
       querySnapshot.forEach((doc) => {
-        meds.push({
+        const medData = {
           id: doc.id,
-          ...(doc.data() as Omit<Medicine, 'id'>),
-        });
+          ...(doc.data() as Omit<Medicine, "id">),
+        };
+
+        // Check if medicine is expired
+        const end = new Date(medData.endDate);
+        const today = new Date();
+
+        // Remove time part for accurate comparison
+        today.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+
+        // Only add non-expired medicines
+        if (end >= today) {
+          meds.push(medData);
+        }
       });
+
       setMedicine(meds);
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -87,22 +112,22 @@ const Med = () => {
 
   const getMedicineTypeIcon = (type: string | undefined | null) => {
     const icons = {
-      Tablet: '💊',
-      Pill: '💊',
-      Capsule: '💊',
-      syrup: '🧴',
-      liquid: '🧴',
-      injection: '💉',
-      cream: '🧴',
-      ointment: '🧴',
-      drops: '💧',
-      inhaler: '🫁',
-      spray: '💨',
+      Tablet: "💊",
+      Pill: "💊",
+      Capsule: "💊",
+      syrup: "🧴",
+      liquid: "🧴",
+      injection: "💉",
+      cream: "🧴",
+      ointment: "🧴",
+      drops: "💧",
+      inhaler: "🫁",
+      spray: "💨",
     };
 
-    if (!type || typeof type !== 'string') return '💊';
+    if (!type || typeof type !== "string") return "💊";
 
-    return icons[type.toLowerCase() as keyof typeof icons] || '💊';
+    return icons[type.toLowerCase() as keyof typeof icons] || "💊";
   };
 
   const toDateFromObject = (ts: any): Date => {
@@ -128,7 +153,7 @@ const Med = () => {
           priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
-          type: 'calendar', // This literal string 'calendar' is what the compiler needs
+          type: "calendar", // This literal string 'calendar' is what the compiler needs
           year: notificationDate.getFullYear(),
           month: notificationDate.getMonth() + 1, // 1-indexed
           day: notificationDate.getDate(),
@@ -143,13 +168,34 @@ const Med = () => {
 
   const getReminderConfig = (reminder: string) => {
     const configs = {
-      daily: { color: '#10B981', gradient: ['#10B981', '#059669'], bgColor: '#ECFDF5' },
-      weekly: { color: '#3B82F6', gradient: ['#3B82F6', '#2563EB'], bgColor: '#EFF6FF' },
-      monthly: { color: '#8B5CF6', gradient: ['#8B5CF6', '#7C3AED'], bgColor: '#F3E8FF' },
-      'as needed': { color: '#F59E0B', gradient: ['#F59E0B', '#D97706'], bgColor: '#FFFBEB' }
+      daily: {
+        color: "#10B981",
+        gradient: ["#10B981", "#059669"],
+        bgColor: "#ECFDF5",
+      },
+      weekly: {
+        color: "#3B82F6",
+        gradient: ["#3B82F6", "#2563EB"],
+        bgColor: "#EFF6FF",
+      },
+      monthly: {
+        color: "#8B5CF6",
+        gradient: ["#8B5CF6", "#7C3AED"],
+        bgColor: "#F3E8FF",
+      },
+      "as needed": {
+        color: "#F59E0B",
+        gradient: ["#F59E0B", "#D97706"],
+        bgColor: "#FFFBEB",
+      },
     };
-    return configs[reminder.toLowerCase() as keyof typeof configs] ||
-      { color: '#6B7280', gradient: ['#6B7280', '#4B5563'], bgColor: '#F9FAFB' };
+    return (
+      configs[reminder.toLowerCase() as keyof typeof configs] || {
+        color: "#6B7280",
+        gradient: ["#6B7280", "#4B5563"],
+        bgColor: "#F9FAFB",
+      }
+    );
   };
 
   const getDaysRemaining = (endDate: string) => {
@@ -158,16 +204,33 @@ const Med = () => {
     const diffTime = end.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return { text: 'Expired', color: '#EF4444', bgColor: '#FEF2F2' };
-    if (diffDays === 0) return { text: 'Last day', color: '#F59E0B', bgColor: '#FFFBEB' };
-    if (diffDays <= 3) return { text: `${diffDays} days left`, color: '#F59E0B', bgColor: '#FFFBEB' };
-    return { text: `${diffDays} days left`, color: '#10B981', bgColor: '#ECFDF5' };
+    if (diffDays < 0)
+      return { text: "Expired", color: "#EF4444", bgColor: "#FEF2F2" };
+    if (diffDays === 0)
+      return { text: "Last day", color: "#F59E0B", bgColor: "#FFFBEB" };
+    if (diffDays <= 3)
+      return {
+        text: `${diffDays} days left`,
+        color: "#F59E0B",
+        bgColor: "#FFFBEB",
+      };
+    return {
+      text: `${diffDays} days left`,
+      color: "#10B981",
+      bgColor: "#ECFDF5",
+    };
   };
 
-  const renderMedicineCard = ({ item, index }: { item: Medicine; index: number }) => {
+  const renderMedicineCard = ({
+    item,
+    index,
+  }: {
+    item: Medicine;
+    index: number;
+  }) => {
     const reminderConfig = getReminderConfig(item.reminder);
     const daysInfo = getDaysRemaining(item.endDate);
-    console.log(item)
+    console.log(item);
 
     return (
       <Animated.View
@@ -176,7 +239,7 @@ const Med = () => {
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
-          }
+          },
         ]}
       >
         <TouchableOpacity
@@ -184,7 +247,12 @@ const Med = () => {
           activeOpacity={0.8}
         >
           {/* Gradient overlay */}
-          <View style={[styles.gradientOverlay, { backgroundColor: reminderConfig.bgColor }]} />
+          <View
+            style={[
+              styles.gradientOverlay,
+              { backgroundColor: reminderConfig.bgColor },
+            ]}
+          />
 
           {/* Header Section */}
           <View style={styles.cardHeader}>
@@ -207,16 +275,29 @@ const Med = () => {
             </View>
 
             <View style={styles.badgesContainer}>
-              <View style={[styles.reminderBadge, { backgroundColor: reminderConfig.color }]}>
+              <View
+                style={[
+                  styles.reminderBadge,
+                  { backgroundColor: reminderConfig.color },
+                ]}
+              >
                 <Text style={styles.reminderText}>
-                  {toDateFromObject(item.selectedTime).toLocaleTimeString('en-IN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true,
-                  })}
+                  {toDateFromObject(item.selectedTime).toLocaleTimeString(
+                    "en-IN",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    },
+                  )}
                 </Text>
               </View>
-              <View style={[styles.daysBadge, { backgroundColor: daysInfo.bgColor }]}>
+              <View
+                style={[
+                  styles.daysBadge,
+                  { backgroundColor: daysInfo.bgColor },
+                ]}
+              >
                 <Text style={[styles.daysText, { color: daysInfo.color }]}>
                   {daysInfo.text}
                 </Text>
@@ -231,8 +312,8 @@ const Med = () => {
                   styles.progressFill,
                   {
                     backgroundColor: reminderConfig.color,
-                    width: `${Math.max(10, Math.min(90, (new Date().getTime() - new Date(item.startDate).getTime()) / (new Date(item.endDate).getTime() - new Date(item.startDate).getTime()) * 100))}%`
-                  }
+                    width: `${Math.max(10, Math.min(90, ((new Date().getTime() - new Date(item.startDate).getTime()) / (new Date(item.endDate).getTime() - new Date(item.startDate).getTime())) * 100))}%`,
+                  },
                 ]}
               />
             </View>
@@ -303,9 +384,13 @@ const Med = () => {
             </View>
             <Text style={styles.emptyTitle}>No Medications Yet</Text>
             <Text style={styles.emptySubtitle}>
-              Start your health journey by adding{'\n'}your first medication schedule
+              Start your health journey by adding{"\n"}your first medication
+              schedule
             </Text>
-            <TouchableOpacity style={styles.addButton} onPress={() => route.push('/components/AddMed')}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => route.push("/components/AddMed")}
+            >
               <Text style={styles.addButtonText}>+ Add Medication</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -313,8 +398,14 @@ const Med = () => {
         ListFooterComponent={
           medicine.length > 0 ? (
             <>
-              <Image source={require('../../assets/images/1393514.png')} style={styles.img} />
-              <TouchableOpacity style={styles.btn} onPress={() => route.push('/components/AddMed')}>
+              <Image
+                source={require("../../assets/images/1393514.png")}
+                style={styles.img}
+              />
+              <TouchableOpacity
+                style={styles.btn}
+                onPress={() => route.push("/components/AddMed")}
+              >
                 <Text style={styles.btnText}>Add New Medication</Text>
               </TouchableOpacity>
             </>
@@ -326,14 +417,13 @@ const Med = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#667EEA']}
+            colors={["#667EEA"]}
             tintColor="#667EEA"
           />
         }
       />
     </View>
   );
-
 };
 
 export default Med;
@@ -341,7 +431,7 @@ export default Med;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
   },
   listContainer: {
     paddingHorizontal: 20,
@@ -350,33 +440,33 @@ const styles = StyleSheet.create({
   img: {
     width: 200,
     height: 200,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 20,
   },
   btn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 10,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 20,
   },
   btnText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   header: {
     marginBottom: 20,
     marginTop: 10,
   },
   headerBackground: {
-    position: 'absolute',
+    position: "absolute",
     top: -100,
     left: -20,
     right: -20,
     height: 200,
-    backgroundColor: '#667EEA',
+    backgroundColor: "#667EEA",
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
@@ -390,43 +480,43 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 16,
-    color: '#E0E7FF',
-    fontWeight: '500',
+    color: "#E0E7FF",
+    fontWeight: "500",
     marginBottom: 4,
   },
   headerTitle: {
     fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
     letterSpacing: -0.5,
   },
   statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statNumber: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 14,
-    color: '#E0E7FF',
-    fontWeight: '600',
+    color: "#E0E7FF",
+    fontWeight: "600",
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
     marginHorizontal: 20,
   },
 
@@ -435,21 +525,21 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 20,
     elevation: 8,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
-    overflow: 'hidden',
-    position: 'relative',
+    borderColor: "#F1F5F9",
+    overflow: "hidden",
+    position: "relative",
   },
   gradientOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     right: 0,
     width: 100,
@@ -458,14 +548,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 20,
   },
   medicineMainInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     marginRight: 16,
   },
@@ -473,12 +563,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 15,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
     borderWidth: 2,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
   },
   medicineIcon: {
     fontSize: 24,
@@ -488,52 +578,52 @@ const styles = StyleSheet.create({
   },
   medName: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#1E293B',
+    fontWeight: "800",
+    color: "#1E293B",
     marginBottom: 6,
     letterSpacing: -0.3,
   },
   typeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   medType: {
     fontSize: 14,
-    color: '#64748B',
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    color: "#64748B",
+    fontWeight: "600",
+    textTransform: "capitalize",
   },
   typeSeparator: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: "#CBD5E1",
     marginHorizontal: 8,
   },
   doseText: {
     fontSize: 14,
-    color: '#475569',
-    fontWeight: '700',
+    color: "#475569",
+    fontWeight: "700",
   },
   badgesContainer: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     gap: 8,
   },
   reminderBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
   },
   reminderText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   daysBadge: {
@@ -543,7 +633,7 @@ const styles = StyleSheet.create({
   },
   daysText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Progress Bar
@@ -552,12 +642,12 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 6,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: "#E2E8F0",
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
 
@@ -566,26 +656,26 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dateGrid: {
-    flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
+    flexDirection: "row",
+    backgroundColor: "#F8FAFC",
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   dateCard: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   dateIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
@@ -599,28 +689,28 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    color: "#64748B",
+    fontWeight: "600",
+    textTransform: "uppercase",
     marginBottom: 2,
     letterSpacing: 0.5,
   },
   dateValue: {
     fontSize: 14,
-    color: '#1E293B',
-    fontWeight: '700',
+    color: "#1E293B",
+    fontWeight: "700",
   },
   dateDivider: {
     width: 1,
     height: 32,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: "#E2E8F0",
     marginHorizontal: 16,
   },
 
   // Action Indicators
   actionIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 6,
     marginTop: 8,
   },
@@ -628,17 +718,17 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: "#CBD5E1",
   },
 
   // Empty State
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 80,
     paddingHorizontal: 40,
   },
   emptyIconContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: 24,
   },
   emptyIcon: {
@@ -646,54 +736,54 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   emptyIconBg: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     left: 10,
     right: 10,
     bottom: 10,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: "#EEF2FF",
     borderRadius: 30,
     zIndex: 0,
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#1E293B',
+    fontWeight: "800",
+    color: "#1E293B",
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
+    color: "#64748B",
+    textAlign: "center",
     lineHeight: 24,
     marginBottom: 32,
   },
   addButton: {
-    backgroundColor: '#667EEA',
+    backgroundColor: "#667EEA",
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 25,
-    shadowColor: '#667EEA',
+    shadowColor: "#667EEA",
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
     elevation: 4,
   },
   addButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "white",
   },
   loadingSpinner: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   loadingIcon: {
     fontSize: 48,
@@ -701,7 +791,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 18,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
 });
