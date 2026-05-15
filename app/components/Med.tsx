@@ -141,25 +141,45 @@ const Med = () => {
   };
 
   const scheduleMedicineNotification = async (medicine: Medicine) => {
-    const notificationDate = toDateFromTimestamp(medicine.selectedTime);
+    const start = new Date(medicine.startDate);
+    const end = new Date(medicine.endDate);
 
-    if (notificationDate > new Date()) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `💊 Time to take ${medicine.medName}`,
-          body: `Dose: ${medicine.dose}`,
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-          year: notificationDate.getFullYear(),
-          month: notificationDate.getMonth() + 1,
-          day: notificationDate.getDate(),
-          hour: notificationDate.getHours(),
-          minute: notificationDate.getMinutes(),
-          repeats: false,
-        },
-      });
+    const medTime = toDateFromTimestamp(medicine.selectedTime);
+
+    const hour = medTime.getHours();
+    const minute = medTime.getMinutes();
+
+    let current = new Date(start);
+
+    while (current <= end) {
+      const triggerDate = new Date(
+        current.getFullYear(),
+        current.getMonth(),
+        current.getDate(),
+        hour,
+        minute,
+      );
+
+      if (triggerDate > new Date()) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `💊 ${medicine.medName}`,
+            body: `Time to take ${medicine.dose}`,
+            sound: true,
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+            year: triggerDate.getFullYear(),
+            month: triggerDate.getMonth() + 1,
+            day: triggerDate.getDate(),
+            hour: triggerDate.getHours(),
+            minute: triggerDate.getMinutes(),
+            repeats: false,
+          },
+        });
+      }
+
+      current.setDate(current.getDate() + 1);
     }
   };
 
