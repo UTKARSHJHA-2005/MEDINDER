@@ -59,23 +59,17 @@ const Med = () => {
       const querySnapshot = await getDocs(q);
       console.log("Snap:", querySnapshot);
       const meds: Medicine[] = [];
-
-      querySnapshot.forEach(async (doc) => {
-        const medData = {
-          id: doc.id,
-          ...(doc.data() as Omit<Medicine, "id">),
-        };
+      const promises = querySnapshot.docs.map(async (doc) => {
+        const medData = { id: doc.id, ...(doc.data() as Omit<Medicine, "id">) };
         const end = new Date(medData.endDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
-
         if (end >= today) {
           meds.push(medData);
-          await scheduleMedicineNotification(medData);
         }
       });
-
+      await Promise.all(promises);
       setMedicine(meds);
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -828,7 +822,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 18,
-    color: "#FFFFFF",
+    color: "#ef7171",
     fontWeight: "600",
   },
 });

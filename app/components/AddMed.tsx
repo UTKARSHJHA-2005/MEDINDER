@@ -56,9 +56,9 @@ export default function AddMed() {
       });
       await scheduleMedicineNotification({
         medName,
-        reminder: formattedTime,
-        startDate,
-        endDate,
+        selectedTime: selectedTime.getTime(),
+        startDate: startDate.getTime(),
+        endDate: endDate.getTime(),
       });
       Alert.alert("Medication saved successfully");
       route.push("/(tabs)");
