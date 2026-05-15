@@ -15,6 +15,7 @@ import { Stack } from "expo-router";
 import { getStorage } from "../service/Storage";
 import { doc, setDoc } from "firebase/firestore";
 import { store } from "../config/db";
+import { scheduleMedicineNotification } from "../service/Notification";
 import { useRouter } from "expo-router";
 
 export default function AddMed() {
@@ -52,6 +53,12 @@ export default function AddMed() {
         userId: user.uid,
         reminder: formattedTime,
         user: user.email,
+      });
+      await scheduleMedicineNotification({
+        medName,
+        reminder: formattedTime,
+        startDate,
+        endDate,
       });
       Alert.alert("Medication saved successfully");
       route.push("/(tabs)");
