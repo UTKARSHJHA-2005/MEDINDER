@@ -65,19 +65,13 @@ const Med = () => {
           id: doc.id,
           ...(doc.data() as Omit<Medicine, "id">),
         };
-
-        // Check if medicine is expired
         const end = new Date(medData.endDate);
         const today = new Date();
-
-        // Remove time part for accurate comparison
         today.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
 
         if (end >= today) {
           meds.push(medData);
-
-          // schedule notification
           await scheduleMedicineNotification(medData);
         }
       });
