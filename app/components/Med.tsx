@@ -107,7 +107,20 @@ const Med = () => {
   };
 
   useEffect(() => {
-    medlist();
+    const setupNotifications = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+
+      if (status !== "granted") {
+        alert("Notification permission not granted");
+        return;
+      }
+
+      await Notifications.cancelAllScheduledNotificationsAsync();
+
+      await medlist();
+    };
+
+    setupNotifications();
   }, []);
 
   const getMedicineTypeIcon = (type: string | undefined | null) => {
