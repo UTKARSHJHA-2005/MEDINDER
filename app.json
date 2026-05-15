@@ -50,7 +50,8 @@
     },
     "expo": {
       "plugins": [
-        "@react-native-google-signin/google-signin"
+        "@react-native-google-signin/google-signin",
+        "@notifee/react-native"
       ],
       "android": {
         "googleServicesFile": "./google-services.json"
