@@ -169,8 +169,6 @@ const Med = () => {
           0,
         );
 
-        console.log("Scheduling:", triggerDate);
-
         if (triggerDate > new Date()) {
           await Notifications.scheduleNotificationAsync({
             content: {
@@ -180,11 +178,9 @@ const Med = () => {
             },
 
             trigger: {
-              type: "calendar",
-              hour: triggerDate.getHours(),
-              minute: triggerDate.getMinutes(),
-              repeats: true,
-            },
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: triggerDate,
+            } as Notifications.DateTriggerInput,
           });
         }
 
