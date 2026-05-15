@@ -328,7 +328,13 @@ const Med = () => {
                 </View>
                 <View style={styles.dateInfo}>
                   <Text style={styles.dateLabel}>Started</Text>
-                  <Text style={styles.dateValue}>{item.startDate}</Text>
+                  <Text style={styles.dateValue}>
+                    {new Date(item.startDate).toLocaleDateString("en-US", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </Text>
                 </View>
               </View>
 
@@ -340,7 +346,14 @@ const Med = () => {
                 </View>
                 <View style={styles.dateInfo}>
                   <Text style={styles.dateLabel}>Ends</Text>
-                  <Text style={styles.dateValue}>{item.endDate}</Text>
+                  <Text style={styles.dateValue}>
+                    {" "}
+                    {new Date(item.endDate).toLocaleDateString("en-US", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </Text>
                 </View>
               </View>
             </View>
