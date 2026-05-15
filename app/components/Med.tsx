@@ -148,42 +148,50 @@ const Med = () => {
   };
 
   const scheduleMedicineNotification = async (medicine: Medicine) => {
-    const start = new Date(medicine.startDate);
-    const end = new Date(medicine.endDate);
+    try {
+      const start = new Date(Number(medicine.startDate));
+      const end = new Date(Number(medicine.endDate));
 
-    const medTime = toDateFromTimestamp(medicine.selectedTime);
+      const medTime = new Date(Number(medicine.selectedTime));
 
-    const hour = medTime.getHours();
-    const minute = medTime.getMinutes();
+      const hour = medTime.getHours();
+      const minute = medTime.getMinutes();
 
-    let current = new Date(start);
+      let current = new Date(start);
 
-    while (current <= end) {
-      const triggerDate = new Date(
-        current.getFullYear(),
-        current.getMonth(),
-        current.getDate(),
-        hour,
-        minute,
-        0,
-      );
+      while (current <= end) {
+        const triggerDate = new Date(
+          current.getFullYear(),
+          current.getMonth(),
+          current.getDate(),
+          hour,
+          minute,
+          0,
+        );
 
-      if (triggerDate > new Date()) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `💊 ${medicine.medName}`,
-            body: `Time to take ${medicine.dose}`,
-            sound: true,
-          },
+        console.log("Scheduling:", triggerDate);
 
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: triggerDate,
-          },
-        });
+        if (triggerDate > new Date()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `💊 ${medicine.medName}`,
+              body: `Time to take ${medicine.dose}`,
+              sound: true,
+            },
+
+            trigger: {
+              type: "calendar",
+              hour: triggerDate.getHours(),
+              minute: triggerDate.getMinutes(),
+              repeats: true,
+            },
+          });
+        }
+
+        current.setDate(current.getDate() + 1);
       }
-
-      current.setDate(current.getDate() + 1);
+    } catch (err) {
+      console.log("Notification Error:", err);
     }
   };
 
