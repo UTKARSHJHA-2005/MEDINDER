@@ -24,7 +24,10 @@ export async function scheduleMedicineNotification(med: any) {
           body: `Time to take ${med.medName}`,
           sound: true,
         },
-        trigger: { date: trigger },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: trigger,
+        },
       });
     }
 
