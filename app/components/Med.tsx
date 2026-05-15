@@ -140,13 +140,11 @@ const Med = () => {
   };
 
   const toDateFromObject = (ts: any): Date => {
-    if (!ts?.seconds) return new Date(); // or return null/undefined
-    return new Timestamp(ts.seconds, ts.nanoseconds).toDate();
+    return new Date(ts);
   };
 
   const toDateFromTimestamp = (ts: any) => {
-    if (!ts?.seconds) return new Date();
-    return new Date(ts.seconds * 1000);
+    return new Date(ts);
   };
 
   const scheduleMedicineNotification = async (medicine: Medicine) => {
