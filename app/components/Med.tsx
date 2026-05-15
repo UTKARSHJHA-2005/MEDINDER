@@ -60,7 +60,7 @@ const Med = () => {
       console.log("Snap:", querySnapshot);
       const meds: Medicine[] = [];
 
-      querySnapshot.forEach((doc) => {
+      querySnapshot.forEach(async (doc) => {
         const medData = {
           id: doc.id,
           ...(doc.data() as Omit<Medicine, "id">),
@@ -74,9 +74,11 @@ const Med = () => {
         today.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
 
-        // Only add non-expired medicines
         if (end >= today) {
           meds.push(medData);
+
+          // schedule notification
+          await scheduleMedicineNotification(medData);
         }
       });
 
