@@ -144,24 +144,21 @@ const Med = () => {
     const notificationDate = toDateFromTimestamp(medicine.selectedTime);
 
     if (notificationDate > new Date()) {
-      // Correctly define the trigger object directly inside the function call
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: `Time to take ${medicine.medName}`,
-          body: `Don't forget your ${medicine.dose} dose.`,
+          title: `💊 Time to take ${medicine.medName}`,
+          body: `Dose: ${medicine.dose}`,
           sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
-          type: "calendar", // This literal string 'calendar' is what the compiler needs
+          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
           year: notificationDate.getFullYear(),
-          month: notificationDate.getMonth() + 1, // 1-indexed
+          month: notificationDate.getMonth() + 1,
           day: notificationDate.getDate(),
           hour: notificationDate.getHours(),
           minute: notificationDate.getMinutes(),
-          second: notificationDate.getSeconds(),
           repeats: false,
-        } as Notifications.CalendarTriggerInput,
+        },
       });
     }
   };
