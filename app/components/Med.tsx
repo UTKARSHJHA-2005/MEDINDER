@@ -347,7 +347,6 @@ const Med = () => {
                 <View style={styles.dateInfo}>
                   <Text style={styles.dateLabel}>Ends</Text>
                   <Text style={styles.dateValue}>
-                    {" "}
                     {new Date(item.endDate).toLocaleDateString("en-US", {
                       day: "numeric",
                       month: "short",
