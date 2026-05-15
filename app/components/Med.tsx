@@ -167,6 +167,7 @@ const Med = () => {
         current.getDate(),
         hour,
         minute,
+        0,
       );
 
       if (triggerDate > new Date()) {
@@ -176,14 +177,10 @@ const Med = () => {
             body: `Time to take ${medicine.dose}`,
             sound: true,
           },
+
           trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-            year: triggerDate.getFullYear(),
-            month: triggerDate.getMonth() + 1,
-            day: triggerDate.getDate(),
-            hour: triggerDate.getHours(),
-            minute: triggerDate.getMinutes(),
-            repeats: false,
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
           },
         });
       }
