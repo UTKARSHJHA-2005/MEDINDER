@@ -30,7 +30,7 @@ export default function AddMed() {
   const [showEnd, setShowEnd] = useState(false);
   const route = useRouter();
   const medTypes = ["Tablet", "Capsule", "Drops", "Syrup", "Injection"];
-  const reminder = new Date(selectedTime.getTime() - 30 * 60000);
+  const reminder = new Date(selectedTime.getTime() - 10 * 60000);
   const hours = reminder.getHours().toString().padStart(2, "0");
   const minutes = reminder.getMinutes().toString().padStart(2, "0");
   const formattedTime = `${hours}:${minutes}`;
