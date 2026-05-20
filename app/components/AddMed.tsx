@@ -21,7 +21,9 @@ import notifee, {
   AndroidImportance,
   RepeatFrequency,
   TimestampTrigger,
+  AndroidNotificationSetting,
 } from "@notifee/react-native";
+import Android from "@notifee/react-native";
 export default function AddMed() {
   const [medName, setMedName] = useState("");
   const [type, setType] = useState("");
@@ -51,238 +53,254 @@ export default function AddMed() {
     endDateTimestamp: any,
   ) => {
     await notifee.requestPermission();
+    if (Platform.OS === "android") {
+      const settings = await notifee.getNotificationSettings();
+      if (Platform.OS === "android") {
+        const settings = await notifee.getNotificationSettings();
 
-    // Create high-importance channel for Android
-    const channelId = await notifee.createChannel({
-      id: "medication-alarms",
-      name: "Medication Reminders",
-      importance: AndroidImportance.HIGH,
-      sound: "default",
-    });
-
-    const trigger: TimestampTrigger = {
-      type: TriggerType.TIMESTAMP,
-      timestamp: reminderTimestamp,
-      repeatFrequency: RepeatFrequency.DAILY,
-      alarmManager: {
-        allowWhileIdle: true,
-      },
-    };
-
-    // 3. Schedule the notification with meta-data
-    await notifee.createTriggerNotification(
-      {
-        id: docid,
-        title: `⏰ Time for your ${medName}!`,
-        body: `Take your dosage: ${dose} (${type})`,
-        data: {
-          // We embed the end date here so our background listener can inspect it
-          endDate: endDateTimestamp.toString(),
-        },
-        android: {
-          channelId,
-          importance: AndroidImportance.HIGH,
-          pressAction: {
-            id: "default",
-          },
-        },
-      },
-      trigger,
-    );
-  };
-
-  const handleSave = async () => {
-    const docid = Date.now().toString();
-    const user = await getStorage("userDetail");
-    if (!(medName && type && dose && selectedTime && startDate)) {
-      Alert.alert("Please fill all the fields");
-      return;
-    }
-
-    try {
-      // Save data to Firestore
-      await setDoc(doc(store, "medicine", docid), {
-        medName,
-        type,
-        dose,
-        selectedTime: selectedTime.getTime(),
-        startDate: startDate.getTime(),
-        endDate: endDate.getTime(),
-        userId: user.uid,
-        reminder: formattedTime,
-        user: user.email,
+        if (settings.android.alarm === AndroidNotificationSetting.DISABLED) {
+          Alert.alert(
+            "Permission Required",
+            "To receive exact medication reminders, please enable Alarms & Reminders in your system settings.",
+          );
+          return;
+        }
+      }
+      const channelId = await notifee.createChannel({
+        id: "medication-alarms",
+        name: "Medication Reminders",
+        importance: AndroidImportance.HIGH,
+        sound: "default",
       });
 
-      // 3. Trigger the OS alarm with your calculated reminder timestamp
-      await scheduleNotification(docid, reminder.getTime(), endDate.getTime());
+      const trigger: TimestampTrigger = {
+        type: TriggerType.TIMESTAMP,
+        timestamp: reminderTimestamp,
+        repeatFrequency: RepeatFrequency.DAILY,
+        alarmManager: {
+          allowWhileIdle: true,
+        },
+      };
 
-      Alert.alert("Medication saved successfully");
-      route.push("/(tabs)");
-    } catch (err) {
-      console.log(err);
-      Alert.alert("Something went wrong saving your medication.");
+      // 3. Schedule the notification with meta-data
+      await notifee.createTriggerNotification(
+        {
+          id: docid,
+          title: `⏰ Time for your ${medName}!`,
+          body: `Take your dosage: ${dose} (${type})`,
+          data: {
+            // We embed the end date here so our background listener can inspect it
+            endDate: endDateTimestamp.toString(),
+          },
+          android: {
+            channelId,
+            importance: AndroidImportance.HIGH,
+            pressAction: {
+              id: "default",
+            },
+          },
+        },
+        trigger,
+      );
     }
-  };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>💊 Add Medication</Text>
-          <Text style={styles.subtitle}>Keep track of your health</Text>
-        </View>
+    const handleSave = async () => {
+      const docid = Date.now().toString();
+      const user = await getStorage("userDetail");
+      if (!(medName && type && dose && selectedTime && startDate)) {
+        Alert.alert("Please fill all the fields");
+        return;
+      }
 
-        {/* Medication Name */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>MEDICATION NAME</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter medication name"
-            placeholderTextColor="#a0aec0"
-            value={medName}
-            onChangeText={setMedName}
-          />
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>TYPE</Text>
-          <View style={styles.typeContainer}>
-            {medTypes.map((item) => (
+      try {
+        // Save data to Firestore
+        await setDoc(doc(store, "medicine", docid), {
+          medName,
+          type,
+          dose,
+          selectedTime: selectedTime.getTime(),
+          startDate: startDate.getTime(),
+          endDate: endDate.getTime(),
+          userId: user.uid,
+          reminder: formattedTime,
+          user: user.email,
+        });
+
+        // 3. Trigger the OS alarm with your calculated reminder timestamp
+        await scheduleNotification(
+          docid,
+          reminder.getTime(),
+          endDate.getTime(),
+        );
+
+        Alert.alert("Medication saved successfully");
+        route.push("/(tabs)");
+      } catch (err) {
+        console.log(err);
+        Alert.alert("Something went wrong saving your medication.");
+      }
+    };
+
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>💊 Add Medication</Text>
+            <Text style={styles.subtitle}>Keep track of your health</Text>
+          </View>
+
+          {/* Medication Name */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>MEDICATION NAME</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter medication name"
+              placeholderTextColor="#a0aec0"
+              value={medName}
+              onChangeText={setMedName}
+            />
+          </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>TYPE</Text>
+            <View style={styles.typeContainer}>
+              {medTypes.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[
+                    styles.typeBtn,
+                    type === item && styles.typeBtnSelected,
+                  ]}
+                  onPress={() => setType(item)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.typeBtnText,
+                      type === item && styles.typeBtnTextSelected,
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>DOSAGE</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., 2 tablets, 15ml"
+              placeholderTextColor="#a0aec0"
+              value={dose}
+              onChangeText={setDose}
+            />
+          </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>WHEN TO TAKE</Text>
+            <View style={styles.timeGroup}>
               <TouchableOpacity
-                key={item}
-                style={[
-                  styles.typeBtn,
-                  type === item && styles.typeBtnSelected,
-                ]}
-                onPress={() => setType(item)}
+                onPress={() => setShowTimePicker(true)}
+                style={styles.timeBox}
                 activeOpacity={0.7}
               >
-                <Text
-                  style={[
-                    styles.typeBtnText,
-                    type === item && styles.typeBtnTextSelected,
-                  ]}
-                >
-                  {item}
+                <Text style={styles.timeText}>
+                  {selectedTime.toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </Text>
               </TouchableOpacity>
-            ))}
+            </View>
           </View>
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>DOSAGE</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., 2 tablets, 15ml"
-            placeholderTextColor="#a0aec0"
-            value={dose}
-            onChangeText={setDose}
-          />
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>WHEN TO TAKE</Text>
-          <View style={styles.timeGroup}>
-            <TouchableOpacity
-              onPress={() => setShowTimePicker(true)}
-              style={styles.timeBox}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.timeText}>
-                {selectedTime.toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.dateRow}>
+            <View style={styles.dateGroup}>
+              <Text style={styles.label}>START DATE</Text>
+              <TouchableOpacity
+                onPress={() => setShowStart(true)}
+                style={styles.dateBox}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dateText}>
+                  {startDate.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.dateGroup}>
+              <Text style={styles.label}>END DATE</Text>
+              <TouchableOpacity
+                onPress={() => setShowEnd(true)}
+                style={styles.dateBox}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dateText}>
+                  {endDate.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-        <View style={styles.dateRow}>
-          <View style={styles.dateGroup}>
-            <Text style={styles.label}>START DATE</Text>
-            <TouchableOpacity
-              onPress={() => setShowStart(true)}
-              style={styles.dateBox}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dateText}>
-                {startDate.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.dateGroup}>
-            <Text style={styles.label}>END DATE</Text>
-            <TouchableOpacity
-              onPress={() => setShowEnd(true)}
-              style={styles.dateBox}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dateText}>
-                {endDate.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Date Pickers */}
-        {showTimePicker && (
-          <DateTimePicker
-            value={selectedTime}
-            mode="time"
-            display="default"
-            onChange={(event, selectedTime) => {
-              setShowTimePicker(Platform.OS === "ios");
-              if (selectedTime) setSelectedTime(selectedTime);
-            }}
-          />
-        )}
+          {/* Date Pickers */}
+          {showTimePicker && (
+            <DateTimePicker
+              value={selectedTime}
+              mode="time"
+              display="default"
+              onChange={(event, selectedTime) => {
+                setShowTimePicker(Platform.OS === "ios");
+                if (selectedTime) setSelectedTime(selectedTime);
+              }}
+            />
+          )}
 
-        {showStart && (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowStart(Platform.OS === "ios");
-              if (selectedDate) setStartDate(selectedDate);
-            }}
-          />
-        )}
+          {showStart && (
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowStart(Platform.OS === "ios");
+                if (selectedDate) setStartDate(selectedDate);
+              }}
+            />
+          )}
 
-        {showEnd && (
-          <DateTimePicker
-            value={endDate}
-            mode="date"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowEnd(Platform.OS === "ios");
-              if (selectedDate) setEndDate(selectedDate);
-            }}
-          />
-        )}
-        {/* Save Button */}
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleSave}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.saveBtnText}>Save Medication</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
-  );
+          {showEnd && (
+            <DateTimePicker
+              value={endDate}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowEnd(Platform.OS === "ios");
+                if (selectedDate) setEndDate(selectedDate);
+              }}
+            />
+          )}
+          {/* Save Button */}
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSave}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.saveBtnText}>Save Medication</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  };
 }
 
 // ... styles remain unchanged ...
