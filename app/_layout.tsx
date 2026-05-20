@@ -33,18 +33,21 @@ Notifications.setNotificationHandler({
 notifee.onBackgroundEvent(async ({ type, detail }) => {
   const { notification } = detail;
 
-  // Check if the notification has our custom data payload
-  if (notification?.data?.endDate) {
-    const endDateTimestamp = parseInt(notification.data.endDate, 10);
+  // 1. Ensure the data object and our specific field exist
+  if (notification?.data && notification.data.endDate) {
+    // 2. Safely convert the union type to a guaranteed string string
+    const rawEndDate = notification.data.endDate;
+    const endDateString =
+      typeof rawEndDate === "string" ? rawEndDate : String(rawEndDate);
+
+    // 3. Parse the clean string safely into an integer
+    const endDateTimestamp = parseInt(endDateString, 10);
     const now = Date.now();
 
-    // If today's date is strictly greater than the medication's end date
     if (now > endDateTimestamp) {
       console.log(
         `Medication period ended for alarm ${notification.id}. Cancelling future repeats.`,
       );
-
-      // Cancel the repeating trigger completely so it stops ringing tomorrow
       await notifee.cancelNotification(notification.id);
     }
   }
