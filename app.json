@@ -37,6 +37,7 @@
       "expo-router",
       "expo-web-browser",
       "@react-native-community/datetimepicker",
+      "@notifee/react-native",
       "expo-font"
     ],
     "experiments": {
