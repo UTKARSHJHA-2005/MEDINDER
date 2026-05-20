@@ -50,7 +50,6 @@ export default function AddMed() {
     reminderTimestamp: any,
     endDateTimestamp: any,
   ) => {
-    // Request permissions
     await notifee.requestPermission();
 
     // Create high-importance channel for Android
@@ -61,13 +60,12 @@ export default function AddMed() {
       sound: "default",
     });
 
-    // 2. Configure a daily repeating trigger
-    const trigger = {
+    const trigger: TimestampTrigger = {
       type: TriggerType.TIMESTAMP,
       timestamp: reminderTimestamp,
-      repeatFrequency: RepeatFrequency.DAILY, // <- Loops this alarm every 24 hours
+      repeatFrequency: RepeatFrequency.DAILY,
       alarmManager: {
-        allowWhileIdle: true, // Crucial: allows Android to fire the alarm in low-power/doze modes
+        allowWhileIdle: true,
       },
     };
 
