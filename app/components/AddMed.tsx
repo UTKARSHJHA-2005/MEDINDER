@@ -16,8 +16,11 @@ import { getStorage } from "../service/Storage";
 import { doc, setDoc } from "firebase/firestore";
 import { store } from "../config/db";
 import { useRouter } from "expo-router";
-import notifee, { TriggerType, AndroidImportance } from "@notifee/react-native";
-
+import notifee, {
+  TriggerType,
+  AndroidImportance,
+  RepeatFrequency,
+} from "@notifee/react-native";
 export default function AddMed() {
   const [medName, setMedName] = useState("");
   const [type, setType] = useState("");
