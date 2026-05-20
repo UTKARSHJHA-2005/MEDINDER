@@ -32,23 +32,17 @@ Notifications.setNotificationHandler({
 
 notifee.onBackgroundEvent(async ({ type, detail }) => {
   const { notification } = detail;
-
-  // 1. Double check that both the notification and its ID exist
   if (notification && notification.id && notification.data?.endDate) {
     const rawEndDate = notification.data.endDate;
     const endDateString =
       typeof rawEndDate === "string" ? rawEndDate : String(rawEndDate || "");
-
     const endDateTimestamp = parseInt(endDateString, 10);
     const now = Date.now();
-
-    // 2. Safely process the date check
     if (!isNaN(endDateTimestamp) && now > endDateTimestamp) {
       console.log(
         `Medication period ended for alarm ${notification.id}. Cancelling future repeats.`,
       );
 
-      // TypeScript is now happy because we proved notification.id exists inside the 'if' condition
       await notifee.cancelNotification(notification.id);
     }
   }
