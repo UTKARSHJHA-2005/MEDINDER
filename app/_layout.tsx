@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 import * as Notifications from "expo-notifications";
 import { useColorScheme } from "@/components/useColorScheme";
+import notifee from "@notifee/react-native";
 
 export { ErrorBoundary } from "expo-router";
 

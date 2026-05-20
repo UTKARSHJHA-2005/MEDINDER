@@ -40,6 +40,10 @@ export default function AddMed() {
   const minutes = reminder.getMinutes().toString().padStart(2, "0");
   const formattedTime = `${hours}:${minutes}`;
 
+  if (reminder.getTime() < Date.now()) {
+    reminder.setDate(reminder.getDate() + 1);
+  }
+
   const scheduleNotification = async (
     docid: any,
     reminderTimestamp: any,
