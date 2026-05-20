@@ -28,6 +28,27 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 });
+
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  const { notification } = detail;
+
+  // Check if the notification has our custom data payload
+  if (notification?.data?.endDate) {
+    const endDateTimestamp = parseInt(notification.data.endDate, 10);
+    const now = Date.now();
+
+    // If today's date is strictly greater than the medication's end date
+    if (now > endDateTimestamp) {
+      console.log(
+        `Medication period ended for alarm ${notification.id}. Cancelling future repeats.`,
+      );
+
+      // Cancel the repeating trigger completely so it stops ringing tomorrow
+      await notifee.cancelNotification(notification.id);
+    }
+  }
+});
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
