@@ -20,6 +20,7 @@ import notifee, {
   TriggerType,
   AndroidImportance,
   RepeatFrequency,
+  TimestampTrigger,
 } from "@notifee/react-native";
 export default function AddMed() {
   const [medName, setMedName] = useState("");
