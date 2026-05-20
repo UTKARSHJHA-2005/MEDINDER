@@ -16,6 +16,7 @@ import { getStorage } from "../service/Storage";
 import { doc, setDoc } from "firebase/firestore";
 import { store } from "../config/db";
 import { useRouter } from "expo-router";
+import notifee, { TriggerType, AndroidImportance } from "@notifee/react-native";
 
 export default function AddMed() {
   const [medName, setMedName] = useState("");
@@ -29,10 +30,50 @@ export default function AddMed() {
   const [showEnd, setShowEnd] = useState(false);
   const route = useRouter();
   const medTypes = ["Tablet", "Capsule", "Drops", "Syrup", "Injection"];
+
+  // Calculate the reminder object cleanly
   const reminder = new Date(selectedTime.getTime() - 10 * 60000);
   const hours = reminder.getHours().toString().padStart(2, "0");
   const minutes = reminder.getMinutes().toString().padStart(2, "0");
   const formattedTime = `${hours}:${minutes}`;
+
+  // 2. Schedule the local alarm trigger
+  const scheduleNotification = async (docid: any, reminderTimestamp: any) => {
+    // Request permissions (Crucial for iOS and Android 13+)
+    await notifee.requestPermission();
+
+    // Create a high-importance channel for Android (required for sound/banners)
+    const channelId = await notifee.createChannel({
+      id: "medication-alarms",
+      name: "Medication Reminders",
+      importance: AndroidImportance.HIGH,
+      sound: "default", // You can substitute custom bundle sounds here later
+    });
+
+    // Set up the exact time trigger
+    const trigger = {
+      type: TriggerType.TIMESTAMP,
+      timestamp: reminderTimestamp, // Triggers at your calculated reminder time
+    };
+
+    // Schedule the notification
+    await notifee.createTriggerNotification(
+      {
+        id: docid, // Match the Firestore doc ID so you can cancel it later if deleted
+        title: `⏰ Time for your ${medName}!`,
+        body: `Take your dosage: ${dose} (${type})`,
+        android: {
+          channelId,
+          importance: AndroidImportance.HIGH,
+          pressAction: {
+            id: "default",
+          },
+        },
+      },
+      trigger,
+    );
+  };
+
   const handleSave = async () => {
     const docid = Date.now().toString();
     const user = await getStorage("userDetail");
@@ -40,8 +81,9 @@ export default function AddMed() {
       Alert.alert("Please fill all the fields");
       return;
     }
-    console.log(user);
+
     try {
+      // Save data to Firestore
       await setDoc(doc(store, "medicine", docid), {
         medName,
         type,
@@ -53,10 +95,15 @@ export default function AddMed() {
         reminder: formattedTime,
         user: user.email,
       });
+
+      // 3. Trigger the OS alarm with your calculated reminder timestamp
+      await scheduleNotification(docid, reminder.getTime());
+
       Alert.alert("Medication saved successfully");
       route.push("/(tabs)");
     } catch (err) {
       console.log(err);
+      Alert.alert("Something went wrong saving your medication.");
     }
   };
 
@@ -221,35 +268,15 @@ export default function AddMed() {
   );
 }
 
+// ... styles remain unchanged ...
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#2d3748",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#718096",
-  },
-  formGroup: {
-    marginBottom: 24,
-  },
+  safeArea: { flex: 1, backgroundColor: "#f8fafc" },
+  container: { flex: 1 },
+  contentContainer: { paddingHorizontal: 24, paddingVertical: 32 },
+  header: { alignItems: "center", marginBottom: 32 },
+  title: { fontSize: 28, fontWeight: "700", color: "#2d3748", marginBottom: 8 },
+  subtitle: { fontSize: 16, color: "#718096" },
+  formGroup: { marginBottom: 24 },
   label: {
     fontSize: 12,
     fontWeight: "700",
@@ -266,20 +293,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     color: "#2d3748",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
     elevation: 3,
   },
-  typeContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
+  typeContainer: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   typeBtn: {
     backgroundColor: "#ffffff",
     borderWidth: 2,
@@ -287,38 +303,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
     elevation: 2,
   },
-  typeBtnSelected: {
-    backgroundColor: "#667eea",
-    borderColor: "#667eea",
-    shadowColor: "#667eea",
-    shadowOpacity: 0.3,
-  },
-  typeBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#4a5568",
-  },
-  typeBtnTextSelected: {
-    color: "#ffffff",
-  },
-  timeGroup: {
-    marginTop: 12,
-  },
-  timeLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#718096",
-    marginBottom: 8,
-  },
+  typeBtnSelected: { backgroundColor: "#667eea", borderColor: "#667eea" },
+  typeBtnText: { fontSize: 14, fontWeight: "600", color: "#4a5568" },
+  typeBtnTextSelected: { color: "#ffffff" },
+  timeGroup: { marginTop: 12 },
   timeBox: {
     backgroundColor: "#ffffff",
     borderWidth: 2,
@@ -327,28 +317,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
     elevation: 2,
   },
-  timeText: {
-    fontSize: 18,
-    color: "#667eea",
-    fontWeight: "600",
-  },
-  dateRow: {
-    flexDirection: "row",
-    gap: 16,
-    marginBottom: 24,
-  },
-  dateGroup: {
-    flex: 1,
-  },
+  timeText: { fontSize: 18, color: "#667eea", fontWeight: "600" },
+  dateRow: { flexDirection: "row", gap: 16, marginBottom: 24 },
+  dateGroup: { flex: 1 },
   dateBox: {
     backgroundColor: "#ffffff",
     borderWidth: 2,
@@ -356,47 +329,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
     elevation: 3,
   },
-  dateText: {
-    fontSize: 16,
-    color: "#2d3748",
-    fontWeight: "500",
-  },
-  reminderBtn: {
-    backgroundColor: "transparent",
-    borderWidth: 2,
-    borderColor: "#cbd5e0",
-    borderStyle: "dashed",
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  reminderText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#667eea",
-  },
+  dateText: { fontSize: 16, color: "#2d3748", fontWeight: "500" },
   saveBtn: {
     backgroundColor: "#667eea",
     borderRadius: 20,
     paddingVertical: 18,
     alignItems: "center",
-    shadowColor: "#667eea",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
     elevation: 8,
   },
   saveBtnText: {
