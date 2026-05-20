@@ -40,31 +40,42 @@ export default function AddMed() {
   const minutes = reminder.getMinutes().toString().padStart(2, "0");
   const formattedTime = `${hours}:${minutes}`;
 
-  // 2. Schedule the local alarm trigger
-  const scheduleNotification = async (docid: any, reminderTimestamp: any) => {
-    // Request permissions (Crucial for iOS and Android 13+)
+  const scheduleNotification = async (
+    docid: any,
+    reminderTimestamp: any,
+    endDateTimestamp: any,
+  ) => {
+    // Request permissions
     await notifee.requestPermission();
 
-    // Create a high-importance channel for Android (required for sound/banners)
+    // Create high-importance channel for Android
     const channelId = await notifee.createChannel({
       id: "medication-alarms",
       name: "Medication Reminders",
       importance: AndroidImportance.HIGH,
-      sound: "default", // You can substitute custom bundle sounds here later
+      sound: "default",
     });
 
-    // Set up the exact time trigger
+    // 2. Configure a daily repeating trigger
     const trigger = {
       type: TriggerType.TIMESTAMP,
-      timestamp: reminderTimestamp, // Triggers at your calculated reminder time
+      timestamp: reminderTimestamp,
+      repeatFrequency: RepeatFrequency.DAILY, // <- Loops this alarm every 24 hours
+      alarmManager: {
+        allowWhileIdle: true, // Crucial: allows Android to fire the alarm in low-power/doze modes
+      },
     };
 
-    // Schedule the notification
+    // 3. Schedule the notification with meta-data
     await notifee.createTriggerNotification(
       {
-        id: docid, // Match the Firestore doc ID so you can cancel it later if deleted
+        id: docid,
         title: `⏰ Time for your ${medName}!`,
         body: `Take your dosage: ${dose} (${type})`,
+        data: {
+          // We embed the end date here so our background listener can inspect it
+          endDate: endDateTimestamp.toString(),
+        },
         android: {
           channelId,
           importance: AndroidImportance.HIGH,
@@ -100,7 +111,7 @@ export default function AddMed() {
       });
 
       // 3. Trigger the OS alarm with your calculated reminder timestamp
-      await scheduleNotification(docid, reminder.getTime());
+      await scheduleNotification(docid, reminder.getTime(), endDate.getTime());
 
       Alert.alert("Medication saved successfully");
       route.push("/(tabs)");
